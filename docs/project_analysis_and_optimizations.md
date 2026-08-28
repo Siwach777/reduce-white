@@ -242,3 +242,45 @@ All recommended optimizations, bug fixes, and security enhancements have been im
 - **Latency**: Average client invocation + IPC round-trip latency of ~25 ms (including full process launch, socket handshake, overlay update, and termination). Direct socket round-trip is $<0.3\text{ ms}$.
 - **Memory Stability**: Base daemon memory footprint remained at 73.99 MB RSS, ending at 74.00 MB RSS after 1,000 stress test iterations (0.00 MB net growth / zero memory leakage).
 
+---
+
+## 7. OLED Display Behavior & Brightness Control Guide
+
+### A. How Software Overlay Works on OLED Screens
+Yes, **Reduce White Point works exceptionally well on OLED / AMOLED displays**, and in several aspects, it is superior to hardware-only dimming:
+
+1. **Per-Pixel Emission & True Energy Savings**:
+   - Unlike LCD panels (where a continuous backlight shines behind liquid crystals), **OLED displays use self-emissive organic subpixels**.
+   - When the dark overlay blends with content, RGB subpixel values are scaled down:
+     $$\text{RGB}_{\text{out}} = \text{RGB}_{\text{in}} \times (1 - \text{opacity})$$
+   - Emitting less light causes subpixels to draw proportionally **less electric current**, resulting in direct power and battery savings.
+
+2. **PWM Flicker Mitigation (Eye Comfort)**:
+   - Many OLED monitors and laptop screens use low-frequency **Pulse Width Modulation (PWM)** to dim hardware brightness. At low brightness levels (e.g., $<20\%$), PWM duty cycles become narrow, creating invisible strobing that causes eye fatigue and headaches for sensitive individuals.
+   - Using a software overlay allows keeping hardware display brightness higher (above the harsh PWM flicker threshold) while achieving a comfortable, ultra-dim reading level at night.
+
+3. **Burn-in Reduction**:
+   - Lowering the peak white point and luminance across the screen significantly reduces heat and organic diode wear, extending panel lifespan.
+
+---
+
+### B. Controlling Brightness & Opacity
+If the overlay is currently too dark, you can adjust it via the CLI:
+
+```bash
+# 1. Set to a subtle 10% or 15% dimming level
+reduce-white --set 0.10
+reduce-white --set 0.15
+
+# 2. Incrementally adjust up or down
+reduce-white --decrease
+reduce-white --increase
+
+# 3. Toggle overlay on/off instantly
+reduce-white --toggle
+
+# 4. Check current status
+reduce-white --status
+```
+
+
