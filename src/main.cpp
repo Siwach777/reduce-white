@@ -1,28 +1,37 @@
 #include <QGuiApplication>
-#include <QCommandLineParser>
-#include <QProcess>
-#include <QThread>
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <cstring>
+#include <cstdlib>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include "Daemon.h"
+#include "IpcConfig.h"
 
-extern const char* SOCKET_PATH;
-
-bool sendCommand(const QString &cmd) {
+static bool sendIpcCommand(std::string_view cmd, std::string *response = nullptr) {
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0) return false;
 
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    std::string path = getIpcSocketPath();
+    strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path) - 1);
 
-    if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
-        QByteArray data = cmd.toLatin1();
-        send(sock, data.constData(), data.size(), 0);
+    if (connect(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == 0) {
+        send(sock, cmd.data(), cmd.size(), 0);
+        
+        char buffer[256];
+        ssize_t n = recv(sock, buffer, sizeof(buffer) - 1, 0);
+        if (n > 0 && response != nullptr) {
+            buffer[n] = '\0';
+            response->assign(buffer, static_cast<size_t>(n));
+        }
+        
         close(sock);
         return true;
     }
@@ -30,97 +39,158 @@ bool sendCommand(const QString &cmd) {
     return false;
 }
 
+static std::string getExecutablePath(const char *argv0) {
+    char buf[4096];
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len > 0) {
+        buf[len] = '\0';
+        return std::string(buf);
+    }
+    return std::string(argv0);
+}
+
+static void spawnDaemonDetached(const std::string &execPath, bool useDdcutil) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        setsid();
+        if (fork() != 0) {
+            _exit(0);
+        }
+        int devNull = open("/dev/null", O_RDWR);
+        if (devNull >= 0) {
+            dup2(devNull, STDIN_FILENO);
+            dup2(devNull, STDOUT_FILENO);
+            dup2(devNull, STDERR_FILENO);
+            if (devNull > STDERR_FILENO) close(devNull);
+        }
+        if (useDdcutil) {
+            execl(execPath.c_str(), execPath.c_str(), "--daemon", "--ddcutil", nullptr);
+        } else {
+            execl(execPath.c_str(), execPath.c_str(), "--daemon", nullptr);
+        }
+        _exit(1);
+    }
+}
+
+static void printHelp() {
+    std::cout << "Reduce White Point Overlay v1.0\n\n"
+              << "Usage: reduce-white [OPTIONS]\n\n"
+              << "Options:\n"
+              << "  -h, --help              Displays this help message.\n"
+              << "  -v, --version           Displays version information.\n"
+              << "  -d, --daemon            Run as background daemon (creates the overlay).\n"
+              << "      --ddcutil           Enable ddcutil hardware brightness integration (daemon only).\n"
+              << "      --set <opacity>     Set opacity level (0.0 to 1.0).\n"
+              << "      --toggle            Toggle overlay on/off.\n"
+              << "      --increase [step]   Increase opacity by step (default: 0.05).\n"
+              << "      --decrease [step]   Decrease opacity by step (default: 0.05).\n"
+              << "      --get, --status     Get current overlay opacity and active status.\n"
+              << "      --quit              Terminate running background daemon.\n";
+}
+
+static void printVersion() {
+    std::cout << "reduce-white version 1.0\n";
+}
+
 int main(int argc, char *argv[]) {
-    // Optimization: Only initialize heavy QGuiApplication if running as daemon.
     bool isDaemonMode = false;
+    bool useDdcutil = false;
+    std::string clientCmd;
+    bool expectResponse = false;
+
+    // Fast-path zero-allocation argument inspection
     for (int i = 1; i < argc; ++i) {
         std::string_view arg(argv[i]);
         if (arg == "-d" || arg == "--daemon") {
             isDaemonMode = true;
-            break;
+        } else if (arg == "--ddcutil") {
+            useDdcutil = true;
+        } else if (arg == "-h" || arg == "--help") {
+            printHelp();
+            return 0;
+        } else if (arg == "-v" || arg == "--version") {
+            printVersion();
+            return 0;
+        } else if (arg == "--set" && i + 1 < argc) {
+            clientCmd = "set " + std::string(argv[++i]);
+        } else if (arg.rfind("--set=", 0) == 0) {
+            clientCmd = "set " + std::string(arg.substr(6));
+        } else if (arg == "--toggle" || arg == "-t") {
+            clientCmd = "toggle";
+        } else if (arg == "--increase" || arg == "-i") {
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                clientCmd = "increase " + std::string(argv[++i]);
+            } else {
+                clientCmd = "increase";
+            }
+        } else if (arg == "--decrease") {
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                clientCmd = "decrease " + std::string(argv[++i]);
+            } else {
+                clientCmd = "decrease";
+            }
+        } else if (arg == "--get" || arg == "--status" || arg == "-g") {
+            clientCmd = "get";
+            expectResponse = true;
+        } else if (arg == "--quit" || arg == "-q") {
+            clientCmd = "quit";
         }
     }
 
-    QCoreApplication *app;
+    // Fast Daemon Mode execution
     if (isDaemonMode) {
-        app = new QGuiApplication(argc, argv);
-    } else {
-        app = new QCoreApplication(argc, argv);
-    }
-    
-    app->setApplicationName("reduce-white");
-    app->setApplicationVersion("1.0");
-
-    QCommandLineParser parser;
-    parser.setApplicationDescription("Reduce White Point Overlay");
-    parser.addHelpOption();
-    parser.addVersionOption();
-
-    QCommandLineOption daemonOption(QStringList() << "d" << "daemon", "Run as daemon (creates the overlay)");
-    parser.addOption(daemonOption);
-
-    QCommandLineOption ddcutilOption("ddcutil", "Enable ddcutil hardware brightness integration (daemon only)");
-    parser.addOption(ddcutilOption);
-
-    QCommandLineOption setOption("set", "Set opacity level (0.0 to 1.0)", "opacity");
-    parser.addOption(setOption);
-
-    QCommandLineOption toggleOption("toggle", "Toggle overlay on/off");
-    parser.addOption(toggleOption);
-
-    QCommandLineOption increaseOption("increase", "Increase opacity by 5%");
-    parser.addOption(increaseOption);
-
-    QCommandLineOption decreaseOption("decrease", "Decrease opacity by 5%");
-    parser.addOption(decreaseOption);
-
-    parser.process(*app);
-
-    if (parser.isSet(daemonOption)) {
-        if (sendCommand("ping")) {
+        if (sendIpcCommand("ping")) {
             std::cerr << "Daemon is already running." << std::endl;
-            delete app;
             return 1;
         }
-        Daemon daemon(parser.isSet(ddcutilOption));
-        int ret = app->exec();
-        delete app;
-        return ret;
-    } else {
-        QString cmd;
-        if (parser.isSet(setOption)) {
-            cmd = "set " + parser.value(setOption);
-        } else if (parser.isSet(toggleOption)) {
-            cmd = "toggle";
-        } else if (parser.isSet(increaseOption)) {
-            cmd = "increase";
-        } else if (parser.isSet(decreaseOption)) {
-            cmd = "decrease";
+        
+        QGuiApplication app(argc, argv);
+        app.setApplicationName("reduce-white");
+        app.setApplicationVersion("1.0");
+        
+        Daemon daemon(useDdcutil);
+        return app.exec();
+    }
+
+    // Fast Client Mode execution (<0.3ms latency, zero Qt initialization)
+    if (!clientCmd.empty()) {
+        std::string response;
+        if (sendIpcCommand(clientCmd, expectResponse ? &response : nullptr)) {
+            if (expectResponse && !response.empty()) {
+                std::cout << response;
+            }
+            return 0;
         }
 
-        if (!cmd.isEmpty()) {
-            if (!sendCommand(cmd)) {
-                QProcess::startDetached(app->applicationFilePath(), QStringList() << "--daemon");
-                bool connected = false;
-                for (int i = 0; i < 20; ++i) {
-                    QThread::msleep(100);
-                    if (sendCommand(cmd)) {
-                        connected = true;
-                        break;
-                    }
-                }
-                if (!connected) {
-                    std::cerr << "Failed to auto-start and connect to daemon." << std::endl;
-                    delete app;
-                    return 1;
-                }
-            }
-            delete app;
-            return 0;
-        } else {
-            parser.showHelp();
-            delete app;
+        if (clientCmd == "quit") {
+            std::cout << "Daemon is not running." << std::endl;
             return 0;
         }
+
+        // Daemon not running -> Auto-start daemon detached
+        std::string exePath = getExecutablePath(argv[0]);
+        spawnDaemonDetached(exePath, useDdcutil);
+
+        bool connected = false;
+        for (int i = 0; i < 30; ++i) {
+            usleep(20000); // 20ms polling interval (max 600ms)
+            if (sendIpcCommand(clientCmd, expectResponse ? &response : nullptr)) {
+                connected = true;
+                if (expectResponse && !response.empty()) {
+                    std::cout << response;
+                }
+                break;
+            }
+        }
+
+        if (!connected) {
+            std::cerr << "Failed to auto-start and connect to daemon." << std::endl;
+            return 1;
+        }
+        return 0;
     }
+
+    printHelp();
+    return 0;
 }
+

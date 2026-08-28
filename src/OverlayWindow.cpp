@@ -4,6 +4,9 @@
 #include <QScreen>
 #include <QGuiApplication>
 #include <QSurfaceFormat>
+#include <QRegion>
+#include <algorithm>
+#include <cmath>
 
 #ifdef HAVE_LAYER_SHELL
 #include <LayerShellQt/Window>
@@ -20,6 +23,9 @@ OverlayWindow::OverlayWindow(QScreen *screen, double opacity, QWindow *parent)
     QSurfaceFormat format;
     format.setAlphaBufferSize(8);
     setFormat(format);
+    
+    // Set empty input mask to guarantee 100% click-through across all window managers
+    setMask(QRegion());
     
     // Check if we are running under Wayland
     QString platform = QGuiApplication::platformName();
@@ -65,19 +71,22 @@ OverlayWindow::OverlayWindow(QScreen *screen, double opacity, QWindow *parent)
 
 void OverlayWindow::onGeometryChanged(const QRect &geo) {
     setGeometry(geo);
+    setMask(QRegion());
 }
 
 void OverlayWindow::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setCompositionMode(QPainter::CompositionMode_Source);
-    int alpha = static_cast<int>(m_opacityLevel * 255.0);
-    painter.fillRect(QRect(0, 0, width(), height()), QColor(0, 0, 0, alpha));
+    int alpha = static_cast<int>(std::round(std::clamp(m_opacityLevel, 0.0, 1.0) * 255.0));
+    painter.fillRect(QRect(0, 0, width(), height()), QColor(0, 0, 0, std::clamp(alpha, 0, 255)));
 }
 
 void OverlayWindow::setOpacityLevel(double opacity) {
-    double newOpacity = std::max(0.0, std::min(1.0, opacity));
-    if (qFuzzyCompare(m_opacityLevel, newOpacity)) return;
+    double newOpacity = std::clamp(opacity, 0.0, 1.0);
+    // Fix: qFuzzyCompare fails at 0.0 due to relative epsilon; use absolute epsilon comparison
+    if (std::abs(m_opacityLevel - newOpacity) < 0.0001) return;
     m_opacityLevel = newOpacity;
     update();
 }
+

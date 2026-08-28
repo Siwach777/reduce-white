@@ -20,29 +20,27 @@ def main():
         sys.exit(1)
 
     build_dir = "build"
-    if not os.path.exists(build_dir):
-        os.makedirs(build_dir)
 
     print("--- Configuring the project ---")
-    run_command(["cmake", "..", "-DCMAKE_BUILD_TYPE=Release"], cwd=build_dir)
+    run_command(["cmake", "-S", ".", "-B", build_dir, "-DCMAKE_BUILD_TYPE=Release"])
 
     print("--- Building the project ---")
-    run_command(["cmake", "--build", ".", "--config", "Release"], cwd=build_dir)
+    run_command(["cmake", "--build", build_dir, "--config", "Release"])
 
     print("--- Installing the project ---")
     if sys.platform == "win32":
         # On Windows, we typically install to a local directory or system path
-        run_command(["cmake", "--install", "."], cwd=build_dir)
+        run_command(["cmake", "--install", build_dir])
         print("\nInstallation complete. Please ensure the installation directory is in your PATH.")
     else:
         # On Linux, usually requires sudo for system-wide installation
         print("Root privileges might be required for installation on Linux.")
         try:
-            run_command(["sudo", "cmake", "--install", "."], cwd=build_dir)
+            run_command(["sudo", "cmake", "--install", build_dir])
             print("\nInstallation complete.")
         except Exception:
             print("Failed to install using sudo. Trying without sudo...")
-            run_command(["cmake", "--install", "."], cwd=build_dir)
+            run_command(["cmake", "--install", build_dir])
 
 if __name__ == "__main__":
     main()

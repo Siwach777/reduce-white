@@ -43,6 +43,12 @@ endif()
 
 target_link_libraries(reduce-white PRIVATE Qt6::Core Qt6::Gui Qt6::Network)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(reduce-white PRIVATE -Wall -Wextra -Wpedantic)
+elseif(MSVC)
+    target_compile_options(reduce-white PRIVATE /W4)
+endif()
+
 if(LayerShellQt_FOUND)
     target_link_libraries(reduce-white PRIVATE LayerShellQt::Interface)
 endif()
