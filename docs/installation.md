@@ -145,7 +145,7 @@ Install failures are reported once with a nonzero exit code. The installer does 
 
 ### Install a downloaded package
 
-Open a successful run of [Build, test, and package](https://github.com/Siwach777/reduce-white/actions/workflows/build.yml) and download the artifact for your OS and CPU architecture. GitHub wraps artifacts in a ZIP download: extract it, then extract the actual `reduce-white-*.tar.gz` or `reduce-white-*.zip` package inside. The native CI artifacts currently cover Linux x64, Windows x64, and macOS Apple Silicon.
+Open a successful run of [Build, test, and package](https://github.com/Siwach777/reduce-white/actions/workflows/build.yml) and download the artifact for your OS and CPU architecture. GitHub wraps artifacts in a ZIP download: extract it, then extract the actual `reduce-white-*.tar.gz` or `reduce-white-*.zip` package inside. The native CI artifacts currently cover Linux x64, Windows x64, macOS Apple Silicon (ARM64), and macOS Intel (X64).
 
 Place the complete extracted package directory wherever you want to keep it. Bundled packages do not require Python, CMake, or a separate Qt development kit to run. Use the command inside its `bin` directory:
 
@@ -200,7 +200,7 @@ The default archive is ZIP on Windows/macOS and TGZ on Linux, named with the pro
 
 Portability is limited to compatible systems. Linux still needs a compatible libc/loader, graphics stack, compositor, and architecture; glibc itself is intentionally not bundled. Windows and macOS packages require a compatible OS and architecture. Unsigned macOS bundles also need the normal release signing/notarization process before public distribution; this build does not claim to produce a notarized release.
 
-The [verified CI run](https://github.com/Siwach777/reduce-white/actions/runs/36816783461) successfully built, tested, installed, moved, smoke-tested, and packaged all three native platforms. Those offscreen checks verify executable discovery, bundled Qt runtime loading, and IPC behavior; the [desktop checklist](development.md#desktop-validation) covers the remaining visible overlay behavior.
+The [verified CI run](https://github.com/Siwach777/reduce-white/actions/runs/36871611039) successfully built, tested, installed, moved, smoke-tested, and packaged all four OS/architecture combinations. It also extracted each resulting archive and tested it in a relocated directory containing spaces and Unicode, with development Qt environment paths removed. Those offscreen checks verify executable discovery, executable permissions, relative wrappers, bundled Qt runtime loading, and IPC behavior; the [desktop checklist](development.md#desktop-validation) covers the remaining visible overlay behavior.
 
 ## Upgrade and remove
 

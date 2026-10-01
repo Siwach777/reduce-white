@@ -40,10 +40,10 @@ reduce-white --quit
 | --- | --- | --- |
 | Linux X11 | Transparent, non-focusable, topmost Qt tool windows | Linux builds and isolated IPC tests verified locally; actual desktop behavior depends on the window manager. |
 | Linux Wayland | LayerShellQt 6 overlay surfaces when available | Builds verified with and without LayerShellQt; the compositor must support layer-shell. |
-| Windows | Qt named-pipe IPC, detached process startup, standard Qt overlay windows | Native x64 build, IPC stress checks, runtime deployment, relocation, and packaging passed CI. |
-| macOS | Native executable discovery, Qt app bundle, AppKit click-through windows and Spaces behavior | Native Apple Silicon build, IPC stress checks, runtime deployment, relocation, and packaging passed CI. |
+| Windows | Qt named-pipe IPC, detached process startup, standard Qt overlay windows | Native x64 build, IPC stress checks, runtime deployment, relocation, and extracted archive checks passed CI. |
+| macOS | Native executable discovery, Qt app bundle, AppKit click-through windows and Spaces behavior | Native Apple Silicon and Intel builds, IPC stress checks, runtime deployment, relocation, and extracted archive checks passed CI. |
 
-The [verified cross-platform CI run](https://github.com/Siwach777/reduce-white/actions/runs/36816783461) also passed the Linux LayerShellQt and numeric-parser fallback jobs. Automated tests use offscreen rendering; desktop stacking, click-through behavior, and monitor hotplugging still need the [manual desktop checks](docs/development.md#desktop-validation). Intel macOS and other CPU architectures need their own native validation.
+All six jobs passed in the [verified cross-platform CI run](https://github.com/Siwach777/reduce-white/actions/runs/36871611039), including Linux LayerShellQt and numeric-parser fallback checks. Archive checks also exercise paths containing spaces and Unicode. Automated tests use offscreen rendering; desktop stacking, click-through behavior, and monitor hotplugging still need the [manual desktop checks](docs/development.md#desktop-validation). Other CPU architectures need their own native validation.
 
 Wayland compositors without layer-shell may reject fullscreen positioning or topmost stacking. macOS fullscreen Spaces, Windows exclusive fullscreen applications, secure desktops, and lock screens require separate visual checks. See [platform behavior](docs/usage.md#platform-behavior).
 
