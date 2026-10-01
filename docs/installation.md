@@ -143,6 +143,30 @@ Install failures are reported once with a nonzero exit code. The installer does 
 
 ## Portable packages
 
+### Install a downloaded package
+
+Open a successful run of [Build, test, and package](https://github.com/Siwach777/reduce-white/actions/workflows/build.yml) and download the artifact for your OS and CPU architecture. GitHub wraps artifacts in a ZIP download: extract it, then extract the actual `reduce-white-*.tar.gz` or `reduce-white-*.zip` package inside. The native CI artifacts currently cover Linux x64, Windows x64, and macOS Apple Silicon.
+
+Place the complete extracted package directory wherever you want to keep it. Bundled packages do not require Python, CMake, or a separate Qt development kit to run. Use the command inside its `bin` directory:
+
+```bash
+# Linux or macOS, from the extracted package directory
+./bin/reduce-white --set 0.2
+./bin/reduce-white --status
+./bin/reduce-white --quit
+```
+
+```powershell
+# Windows, from the extracted package directory
+.\bin\reduce-white.exe --set 0.2
+.\bin\reduce-white.exe --status
+.\bin\reduce-white.exe --quit
+```
+
+Add that `bin` directory to PATH to use the command from anywhere. These are CI build artifacts, not signed/notarized release installers. The OS/runtime compatibility limits below still apply.
+
+### Build a portable package
+
 Build and install a deployed runtime into a fresh directory:
 
 On Linux, install `patchelf` first (`sudo apt install patchelf`, `sudo dnf install patchelf`, or `sudo pacman -S patchelf`). It is not needed for a system-Qt installation or for native Windows/macOS deployment.
@@ -176,7 +200,7 @@ The default archive is ZIP on Windows/macOS and TGZ on Linux, named with the pro
 
 Portability is limited to compatible systems. Linux still needs a compatible libc/loader, graphics stack, compositor, and architecture; glibc itself is intentionally not bundled. Windows and macOS packages require a compatible OS and architecture. Unsigned macOS bundles also need the normal release signing/notarization process before public distribution; this build does not claim to produce a notarized release.
 
-The CI workflow installs, moves, smoke-tests, and packages native builds. Its checks should be reviewed on the actual platforms before advertising a supported release.
+The [verified CI run](https://github.com/Siwach777/reduce-white/actions/runs/36816783461) successfully built, tested, installed, moved, smoke-tested, and packaged all three native platforms. Those offscreen checks verify executable discovery, bundled Qt runtime loading, and IPC behavior; the [desktop checklist](development.md#desktop-validation) covers the remaining visible overlay behavior.
 
 ## Upgrade and remove
 

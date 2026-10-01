@@ -78,7 +78,7 @@ The compositor must implement layer-shell. Standard Wayland windows cannot force
 
 Run the [desktop validation checklist](development.md#desktop-validation) on the native system. Automated IPC tests use an offscreen plugin and cannot verify click-through, focus, mixed scaling, fullscreen stacking, or Spaces behavior.
 
-On macOS, use the installed wrapper or the executable inside `reduce-white.app/Contents/MacOS`. Ensure a package's architecture and deployment target match the machine. Review CI compile results for the Objective-C++ source before treating macOS support as verified.
+On macOS, use the installed wrapper or the executable inside `reduce-white.app/Contents/MacOS`. Ensure a package's architecture and deployment target match the machine. Native Apple Silicon CI verifies compilation, IPC, and relocated runtime deployment; visual desktop behavior still needs the manual checklist.
 
 On Windows, use the matching Qt/compiler runtime and test ordinary desktop fullscreen applications separately from exclusive fullscreen or secure system surfaces.
 

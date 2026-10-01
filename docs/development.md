@@ -119,7 +119,7 @@ ctest --test-dir build-sanitize --output-on-failure
 
 Socket tests require local socket access. LeakSanitizer requires process inspection and may fail under ptrace/sandboxing. Such environmental failures are distinct from assertion failures or reported memory errors.
 
-The CI native matrix uses Linux, Windows, and macOS to build, run tests, deploy runtime dependencies, move the installation, smoke-test the moved executable, and produce archives. Separate Linux jobs check a distribution Qt/LayerShellQt combination and the parser fallback. Newly added CI must actually run before its results can be claimed.
+The CI native matrix uses Linux, Windows, and macOS to build, run tests, deploy runtime dependencies, move the installation, smoke-test the moved executable, and produce archives. Linux and Windows currently use Qt 6.8.3; macOS uses Qt 6.10.3 to match newer Xcode SDKs. Separate Linux jobs check a distribution Qt/LayerShellQt combination and the parser fallback. All five jobs passed in the [validated run](https://github.com/Siwach777/reduce-white/actions/runs/36816783461); see the [review](project_analysis_and_optimizations.md#validation) for the exact scope and remaining desktop checks.
 
 ## Desktop validation
 

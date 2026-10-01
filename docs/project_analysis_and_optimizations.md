@@ -46,6 +46,8 @@ A bundled Linux installation and the extracted CPack TGZ archive passed the nati
 
 A 1,000-request offscreen benchmark recorded 7.637 ms per process launch plus IPC request and 0.022 ms per direct socket request. Private memory changed from 5.29 to 5.30 MiB, and PSS from 6.48 to 6.49 MiB. These are measurements from one Linux run, not desktop performance guarantees or proof of leak freedom.
 
-Native Windows and macOS CI execution, actual monitor hotplugging, compositor stacking/click-through behavior, and real DDC/CI hardware need validation on their corresponding systems. The hardware regression uses a controlled subprocess shim.
+The [native CI run for commit `a0eafbe`](https://github.com/Siwach777/reduce-white/actions/runs/36816783461) passed all five jobs: Linux x64 and Windows x64 with Qt 6.8.3, macOS Apple Silicon with Qt 6.10.3, Fedora's Qt/LayerShellQt build, and Ubuntu's forced Qt numeric parser. The native jobs built, tested, installed bundled runtimes, moved the installations, exercised the moved executable with development paths removed, and generated downloadable archives.
+
+Actual monitor hotplugging, compositor stacking/click-through behavior, and real DDC/CI hardware still need desktop validation. The hardware regression uses a controlled subprocess shim. Intel macOS and other CPU architectures were not tested by that run.
 
 Qt's [local server](https://doc.qt.io/qt-6/qlocalserver.html) and [local socket](https://doc.qt.io/qt-6/qlocalsocket.html) documentation describe the IPC access flags and asynchronous lifecycle used here.

@@ -40,10 +40,10 @@ reduce-white --quit
 | --- | --- | --- |
 | Linux X11 | Transparent, non-focusable, topmost Qt tool windows | Linux builds and isolated IPC tests verified locally; actual desktop behavior depends on the window manager. |
 | Linux Wayland | LayerShellQt 6 overlay surfaces when available | Builds verified with and without LayerShellQt; the compositor must support layer-shell. |
-| Windows | Qt named-pipe IPC, detached process startup, standard Qt overlay windows | Native smoke tests and runtime packaging are configured in CI; a Windows host is needed to execute them. |
-| macOS | Native executable discovery, Qt app bundle, AppKit click-through windows and Spaces behavior | Native build/test/packaging configured in CI; macOS desktop validation remains necessary. |
+| Windows | Qt named-pipe IPC, detached process startup, standard Qt overlay windows | Native x64 build, IPC stress checks, runtime deployment, relocation, and packaging passed CI. |
+| macOS | Native executable discovery, Qt app bundle, AppKit click-through windows and Spaces behavior | Native Apple Silicon build, IPC stress checks, runtime deployment, relocation, and packaging passed CI. |
 
-Windows and macOS implementations are included, but their native CI jobs have not been executed in the Linux development session. Their support should be treated as experimental until those jobs and the desktop checklist pass. CI configuration alone is not a successful test result.
+The [verified cross-platform CI run](https://github.com/Siwach777/reduce-white/actions/runs/36816783461) also passed the Linux LayerShellQt and numeric-parser fallback jobs. Automated tests use offscreen rendering; desktop stacking, click-through behavior, and monitor hotplugging still need the [manual desktop checks](docs/development.md#desktop-validation). Intel macOS and other CPU architectures need their own native validation.
 
 Wayland compositors without layer-shell may reject fullscreen positioning or topmost stacking. macOS fullscreen Spaces, Windows exclusive fullscreen applications, secure desktops, and lock screens require separate visual checks. See [platform behavior](docs/usage.md#platform-behavior).
 
@@ -59,7 +59,7 @@ Wayland compositors without layer-shell may reject fullscreen positioning or top
 | Existing Qt runtime | `python3 install.py --system-qt` | Disables runtime deployment. |
 | System-wide installation | `python3 install.py --system` | Installs into `/usr/local` on Unix or Program Files on Windows; privileges may be required. |
 
-A portable distribution can be moved as a complete directory on a compatible OS and CPU architecture. It does not turn one binary into an application for every operating system or guarantee compatibility with older Linux libc versions. Detailed packaging and relocation instructions are in [installation](docs/installation.md#portable-packages).
+A portable distribution can be moved as a complete directory on a compatible OS and CPU architecture. It does not turn one binary into an application for every operating system or guarantee compatibility with older Linux libc versions. Downloadable CI packages and source-build instructions are covered in [installation](docs/installation.md#portable-packages).
 
 ## Features and behavior
 

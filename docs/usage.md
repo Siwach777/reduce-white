@@ -8,6 +8,23 @@ The daemon stores a configured opacity and an active flag. Toggling off preserve
 
 The overlay uses an 8-bit alpha channel. Closely spaced opacity values can produce the same pixels; those changes are stored but do not trigger a repaint. Status prints two decimal places. The reported active flag indicates command state, even when a configured opacity of 0 produces no visible dimming.
 
+## OLED and LCD displays
+
+The same software overlay can be used on either display technology. LCD panels use a backlight, while OLED pixels emit their own light; [Samsung Display describes the distinction and content-dependent OLED power measurement](https://global.samsungdisplay.com/31053?type=main). This utility changes the composed image. It does not directly lower an LCD backlight unless Linux hardware control is enabled.
+
+An OLED's light output and power usage depend on its pixels, content, hardware settings, and display pipeline. Overlay opacity is not a calibrated luminance or power percentage. The project does not measure battery savings, control the panel's PWM behavior, or establish a reduction in burn-in. HDR and color-managed content also require visual testing with the target compositor.
+
+Start with a subtle opacity and adjust it to your display:
+
+```bash
+reduce-white --set 0.10
+reduce-white --decrease 0.05
+reduce-white --toggle
+reduce-white --status
+```
+
+Use `--set 0` or `--quit` to remove the software effect. Keep a keyboard shortcut for either command if experimenting with high opacity; opacity 1 makes the overlay completely black.
+
 ## Command reference
 
 Use one control command per invocation. Options have long forms and the aliases shown below.
