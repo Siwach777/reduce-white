@@ -13,7 +13,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            qt: '6.8.3'
+          - os: windows-latest
+            qt: '6.8.3'
+          - os: macos-latest
+            qt: '6.10.3'
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +28,7 @@ jobs:
           python-version: '3.x'
       - uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.3'
+          version: ${{ matrix.qt }}
           cache: true
       - name: Linux deployment tool
         if: runner.os == 'Linux'

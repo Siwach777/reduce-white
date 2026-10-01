@@ -61,6 +61,8 @@ brew install cmake qtbase python
 
 [Homebrew's `qtbase` formula](https://formulae.brew.sh/formula/qtbase) contains the Qt base modules used here. The installer also tries to discover the `qtbase` or `qt` formula automatically. For Qt installed through the Qt Maintenance Tool, pass that kit's installation prefix using `--qt-prefix`.
 
+Use a current Qt kit with current Xcode SDKs. Some older kits, including Qt 6.8.3, reference the removed AGL framework and cannot link with recent macOS SDKs. CMake detects that combination and explains how to resolve it. The native macOS CI job uses Qt 6.10.3; see the updated [Qt OpenGL dependency configuration](https://github.com/qt/qtbase/blob/v6.10.3/cmake/FindWrapOpenGL.cmake).
+
 By default the installation layout is:
 
 ```text

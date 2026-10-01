@@ -10,6 +10,10 @@ python3 install.py --qt-prefix /path/to/Qt/kit
 
 A Windows MSVC kit must match the selected compiler and architecture. A macOS universal build needs Qt libraries for both requested architectures. When changing kits/generators, select a fresh `--build-dir`; a CMake cache created by another compiler is not interchangeable.
 
+## macOS reports an absent AGL framework
+
+An older Qt kit can add `-framework AGL` to the link command even though the selected macOS SDK no longer supplies it. Install a current Qt kit, such as Qt 6.10+, and configure a fresh build directory with `--qt-prefix`. Alternatively select an older Xcode SDK compatible with that kit. This is a Qt/toolchain dependency issue; copying an unrelated framework into the project is unnecessary.
+
 ## Portable deployment fails
 
 Portable deployment requires Qt 6.5+. With an older distribution Qt, install using `--system-qt` or configure a newer kit.

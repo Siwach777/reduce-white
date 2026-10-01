@@ -82,7 +82,8 @@ int main(int argc, char **argv) {
                 client.exitStatus() != QProcess::NormalExit || client.exitCode() != exitCode) {
                 throw std::runtime_error("Client failed: " + client.readAllStandardError().toStdString());
             }
-            return client.readAllStandardOutput();
+            // Windows console streams use CRLF; the wire protocol still uses LF.
+            return client.readAllStandardOutput().replace("\r\n", "\n");
         };
         command({"--set", "0.4"});
         if (command({"--get"}) != "opacity: 0.40 active: 1\n") throw std::runtime_error("Incorrect set/get state");

@@ -27,6 +27,15 @@ if(REDUCE_WHITE_DEPLOY_RUNTIME AND UNIX AND NOT APPLE)
 endif()
 
 find_package(Qt6 6.2 COMPONENTS Core Gui Network REQUIRED)
+if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
+    get_target_property(qt_opengl_libraries WrapOpenGL::WrapOpenGL INTERFACE_LINK_LIBRARIES)
+    if(qt_opengl_libraries MATCHES "AGL")
+        find_library(REDUCE_WHITE_AGL_FRAMEWORK AGL)
+        if(NOT REDUCE_WHITE_AGL_FRAMEWORK)
+            message(FATAL_ERROR "This Qt kit references AGL, which is absent from the selected macOS SDK. Use a current Qt kit (such as Qt 6.10+) or an older compatible Xcode SDK.")
+        endif()
+    endif()
+endif()
 include(CheckCXXSourceCompiles)
 option(REDUCE_WHITE_FORCE_QT_NUMBER_PARSER "Use Qt's C locale instead of floating-point from_chars" OFF)
 check_cxx_source_compiles("#include <charconv>
@@ -171,7 +180,11 @@ endforeach()")
     endif()
     # Qt's generated support script sets its own policy version. Set the default
     # before it is included so recent CMake versions do not emit path warnings.
-    install(CODE "set(CMAKE_POLICY_DEFAULT_CMP0207 NEW)")
+    install(CODE [[
+        set(CMAKE_POLICY_DEFAULT_CMP0207 NEW)
+        # Qt requires an absolute deployment root even when --prefix is relative.
+        get_filename_component(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}" ABSOLUTE)
+    ]])
     qt6_generate_deploy_script(TARGET reduce-white OUTPUT_SCRIPT deploy_script CONTENT
         "qt_deploy_runtime_dependencies(
             EXECUTABLE \"${deploy_executable}\"
