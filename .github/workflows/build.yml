@@ -14,16 +14,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             qt: '6.8.3'
           - os: windows-latest
             qt: '6.8.3'
           - os: macos-latest
             qt: '6.10.3'
+          - os: macos-15-intel
+            qt: '6.10.3'
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - uses: jurplel/install-qt-action@v4
@@ -58,19 +60,29 @@ jobs:
           "$smoke" "$executable" --deployed
       - name: Package
         run: cpack --config build/CPackConfig.cmake -C Release -B packages
-      - uses: actions/upload-artifact@v4
+      - name: Test extracted archive
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            smoke="build/Release/ipc-smoke.exe"
+          else
+            smoke="build/ipc-smoke"
+          fi
+          python tests/check_package.py packages "$smoke"
+      - uses: actions/upload-artifact@v6
         with:
           name: reduce-white-${{ runner.os }}-${{ runner.arch }}
           path: packages/reduce-white-*
           if-no-files-found: error
+          compression-level: 0
 
   linux-layer-shell:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: fedora:43
     steps:
       - name: Install distribution dependencies
         run: dnf install -y cmake gcc-c++ qt6-qtbase-devel layer-shell-qt-devel python3 git
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DREDUCE_WHITE_DEPLOY_RUNTIME=OFF
       - name: Build and test
@@ -81,7 +93,7 @@ jobs:
   linux-qt-parser:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev python3
       - name: Build parser fallback without layer-shell

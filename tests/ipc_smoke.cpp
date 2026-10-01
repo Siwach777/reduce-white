@@ -39,7 +39,8 @@ int main(int argc, char **argv) {
     }
     QProcess daemon;
     daemon.setProcessEnvironment(env);
-    const QString binary = QString::fromLocal8Bit(argv[1]);
+    // Qt preserves Unicode command-line paths on Windows via GetCommandLineW.
+    const QString binary = app.arguments().at(1);
     const auto path = QString::fromUtf8(getIpcSocketPath().c_str());
     struct Cleanup {
         QString path;

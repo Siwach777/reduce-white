@@ -12,6 +12,7 @@
 | `src/MacPlatform.*` | Objective-C++ AppKit window and application configuration, compiled only on Apple platforms. |
 | `tests/ipc_smoke.cpp` | Native Qt socket/pipe smoke test usable on Linux, Windows, and macOS. |
 | `tests/test_regression.py` | Unix adversarial IPC/lifecycle tests plus CLI and installer checks. |
+| `tests/check_package.py` | Extract a CPack archive, preserve executable permissions, relocate it into a path with spaces/Unicode, and test its bundled runtime. |
 | `install.py`, `install.sh`, `install.bat` | Shared installer and platform entry points. |
 | `benchmark.py` | Isolated Linux offscreen IPC and memory measurements. |
 | `.github/workflows/build.yml` | Native build, test, install, relocate, and package jobs. |
@@ -119,7 +120,15 @@ ctest --test-dir build-sanitize --output-on-failure
 
 Socket tests require local socket access. LeakSanitizer requires process inspection and may fail under ptrace/sandboxing. Such environmental failures are distinct from assertion failures or reported memory errors.
 
-The CI native matrix uses Linux, Windows, and macOS to build, run tests, deploy runtime dependencies, move the installation, smoke-test the moved executable, and produce archives. Linux and Windows currently use Qt 6.8.3; macOS uses Qt 6.10.3 to match newer Xcode SDKs. Separate Linux jobs check a distribution Qt/LayerShellQt combination and the parser fallback. All five jobs passed in the [validated run](https://github.com/Siwach777/reduce-white/actions/runs/36816783461); see the [review](project_analysis_and_optimizations.md#validation) for the exact scope and remaining desktop checks.
+After generating a deployed CPack package, test the archive itself:
+
+```bash
+python3 tests/check_package.py packages build/ipc-smoke
+```
+
+On Windows, use `python tests/check_package.py packages build/Release/ipc-smoke.exe`. The package directory must contain exactly one ZIP or TGZ archive. The helper uses CMake to extract it with its executable permissions, moves it into a directory containing spaces and Unicode, and runs native IPC checks with development runtime paths removed. It also exercises the relative macOS CLI wrapper. Temporary files are cleaned up after the check.
+
+The CI native matrix uses Ubuntu 24.04, Windows, and both Apple Silicon and Intel macOS to build, run tests, deploy runtime dependencies, move the installation, smoke-test the moved executable, produce archives, and test the extracted archives before uploading them. Linux and Windows currently use Qt 6.8.3; macOS uses Qt 6.10.3 to match newer Xcode SDKs. Separate Linux jobs check a distribution Qt/LayerShellQt combination and the parser fallback. The earlier five-job matrix passed in the [validated run](https://github.com/Siwach777/reduce-white/actions/runs/36816783461); see the [review](project_analysis_and_optimizations.md#validation) for the exact scope and remaining desktop checks.
 
 ## Desktop validation
 
