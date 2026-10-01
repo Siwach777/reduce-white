@@ -52,7 +52,7 @@ reduce-white --get --toggle     # Conflicting commands
 
 A control command contacts the current user's daemon. If no daemon is available, it starts the same executable as a detached `--daemon` process and waits for startup. `--quit` does not auto-start a daemon. `--get` does auto-start one when necessary, so it is not a read-only process-existence probe.
 
-A connected request has a one-second IPC deadline. Auto-start polls approximately every 20 ms for up to three seconds; process creation and the final request can add time. A failed connected request is not automatically replayed because a toggle or increment may already have changed state.
+A connected request has a one-second IPC deadline. On Windows, Qt's initial connection setup can wait up to five seconds if every named-pipe instance is busy. Auto-start polls approximately every 20 ms for up to three seconds; process creation and the final request can add time. A failed connected request is not automatically replayed because a toggle or increment may already have changed state.
 
 For visible startup errors or hardware diagnostics, run in the foreground:
 

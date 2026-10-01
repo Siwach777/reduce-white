@@ -57,11 +57,13 @@ static IpcResult sendIpcCommand(std::string_view cmd, std::string &response) {
         return IpcResult::Error;
     }
     while (socket.bytesToWrite() > 0) {
-        if (remaining() == 0 || !socket.waitForBytesWritten(remaining())) return IpcResult::Error;
+        if (remaining() == 0) return IpcResult::Error;
+        if (!socket.waitForBytesWritten(remaining()) && socket.bytesToWrite() > 0) return IpcResult::Error;
     }
     while (response.find('\n') == std::string::npos && response.size() < 256) {
-        if (!socket.bytesAvailable() && (remaining() == 0 || !socket.waitForReadyRead(remaining()))) {
-            return IpcResult::Error;
+        if (!socket.bytesAvailable()) {
+            if (remaining() == 0) return IpcResult::Error;
+            if (!socket.waitForReadyRead(remaining()) && !socket.bytesAvailable()) return IpcResult::Error;
         }
         const auto bytes = socket.read(256 - static_cast<qint64>(response.size()));
         response.append(bytes.constData(), static_cast<size_t>(bytes.size()));

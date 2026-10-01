@@ -17,6 +17,7 @@ The review covers the C++ daemon/client/overlay, CMake configuration, installati
 | Closing or hiding the last overlay could end the daemon. | The application disables quit-on-last-window-close. |
 | A debounce timer still allowed concurrent detached `ddcutil` processes. | An owned `QProcess` serializes writes, queues the latest value, checks completion, and limits execution time. |
 | Windows source included unconditional POSIX APIs, and its GUI executable hid CLI output. | POSIX includes are guarded, Windows uses Qt IPC/process APIs, and the executable retains console output. |
+| Immediate server disconnection could discard unread Windows named-pipe replies. | Connections stay open until the client reads and closes, with a deadline for uncooperative peers; native tests repeat status round trips. |
 | macOS had no app bundle or native overlay handling. | The build creates an accessory app bundle and a relative CLI wrapper; AppKit configures click-through overlay windows and Spaces behavior. |
 | Older C++ standard libraries lacked floating-point `from_chars`. | CMake probes the actual overload; a strict Qt C-locale parser provides the fallback, with a switch to test it explicitly. |
 | Deployed Qt installations could miss platform plugins or keep development-machine paths. | Packaging explicitly includes required platform plugins and dependencies, adds relative paths, and checks a moved installation with Qt environment overrides removed. |

@@ -118,7 +118,6 @@ void Daemon::handleConnection() {
             if (socket->bytesAvailable() > 256) {
                 socket->setProperty("handled", true);
                 socket->write("error: command too long\n");
-                socket->disconnectFromServer();
                 return;
             }
             if (!socket->canReadLine()) return;
@@ -132,7 +131,9 @@ void Daemon::handleConnection() {
                 QTimer::singleShot(2000, qApp, &QCoreApplication::quit);
             }
             socket->write(reply);
-            socket->disconnectFromServer();
+            // Wait for the client to read its reply and close. On Windows,
+            // disconnecting a named pipe here can discard unread reply bytes.
+            // The connection deadline also bounds peers that never close.
         };
         connect(socket, &QLocalSocket::readyRead, socket, readCommand);
         readCommand(); // Data may already be buffered when the connection is accepted.

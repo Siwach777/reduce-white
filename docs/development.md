@@ -49,7 +49,7 @@ A `QLockFile` protects the endpoint for the daemon's whole lifetime. Time-based 
 
 ## Wire protocol
 
-Each connection carries one newline-terminated request and receives a newline-terminated response. The maximum request length is 256 bytes including the terminator. Clients that never complete a frame expire after two seconds. The CLI uses a one-second connected-request deadline.
+Each connection carries one newline-terminated request and receives a newline-terminated response. The maximum request length is 256 bytes including the terminator. The client closes after reading the reply; the server leaves the connection open until then so Windows named pipes cannot discard unread replies during server disconnection. Connections expire after two seconds, including peers that fail to finish a frame or close after reading. The CLI uses a one-second I/O deadline; Qt's Windows connection setup can additionally wait when the pipe is busy.
 
 | Request | Successful reply |
 | --- | --- |
@@ -95,7 +95,7 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The native test starts a private offscreen daemon, communicates using Qt local sockets/pipes, checks state and invalid input, rejects a duplicate daemon, verifies shutdown, and exercises auto-start. The Python suite tests numeric syntax, malformed wire commands, idle/disconnected clients, fragmented/oversized frames, concurrent clients and starts, crash recovery, socket/lock cleanup, unexpected file preservation, hardware scheduling, and installer failure/configuration handling. Raw Unix socket tests are skipped on Windows; the native test covers the Windows transport.
+The native test starts a private offscreen daemon, communicates using Qt local sockets/pipes, checks state and invalid input, performs 50 repeated status round trips to catch lost replies, rejects a duplicate daemon, verifies shutdown, and exercises auto-start. It normalizes Windows console CRLF output while preserving LF on the wire. The Python suite tests numeric syntax, malformed wire commands, idle/disconnected clients, fragmented/oversized frames, concurrent clients and starts, crash recovery, socket/lock cleanup, unexpected file preservation, hardware scheduling, and installer failure/configuration handling. Raw Unix socket tests are skipped on Windows; the native test covers the Windows transport.
 
 Force the macOS-compatible parser fallback and remove layer-shell from the build:
 

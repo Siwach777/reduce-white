@@ -80,13 +80,19 @@ int main(int argc, char **argv) {
             client.start(binary, args);
             if (!client.waitForStarted(3000) || !client.waitForFinished(5000) ||
                 client.exitStatus() != QProcess::NormalExit || client.exitCode() != exitCode) {
-                throw std::runtime_error("Client failed: " + client.readAllStandardError().toStdString());
+                throw std::runtime_error("Client failed (" + args.join(' ').toStdString() + "): " +
+                                         client.readAllStandardError().toStdString());
             }
             // Windows console streams use CRLF; the wire protocol still uses LF.
             return client.readAllStandardOutput().replace("\r\n", "\n");
         };
         command({"--set", "0.4"});
         if (command({"--get"}) != "opacity: 0.40 active: 1\n") throw std::runtime_error("Incorrect set/get state");
+        for (int i = 0; i < 50; ++i) {
+            if (command({"--get"}) != "opacity: 0.40 active: 1\n") {
+                throw std::runtime_error("Reply lost during repeated round trips");
+            }
+        }
         command({"--set", "nan"}, 2);
         command({"--toggle"});
         if (command({"--get"}) != "opacity: 0.40 active: 0\n") throw std::runtime_error("Incorrect toggle state");
