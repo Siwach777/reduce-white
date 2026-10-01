@@ -1,0 +1,85 @@
+name: Build, test, and package
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          cache: true
+      - name: Linux deployment tool
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y patchelf
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DREDUCE_WHITE_DEPLOY_RUNTIME=ON
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Test native build
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Install with bundled runtime
+        run: cmake --install build --config Release --prefix stage
+      - name: Test relocated installation
+        shell: bash
+        run: |
+          mv stage relocated
+          if [ "$RUNNER_OS" = Windows ]; then
+            executable="$PWD/relocated/bin/reduce-white.exe"
+          else
+            executable="$PWD/relocated/bin/reduce-white"
+          fi
+          if [ "$RUNNER_OS" = Windows ]; then
+            smoke="$PWD/build/Release/ipc-smoke.exe"
+          else
+            smoke="$PWD/build/ipc-smoke"
+          fi
+          "$smoke" "$executable" --deployed
+      - name: Package
+        run: cpack --config build/CPackConfig.cmake -C Release -B packages
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reduce-white-${{ runner.os }}-${{ runner.arch }}
+          path: packages/reduce-white-*
+          if-no-files-found: error
+
+  linux-layer-shell:
+    runs-on: ubuntu-latest
+    container: fedora:43
+    steps:
+      - name: Install distribution dependencies
+        run: dnf install -y cmake gcc-c++ qt6-qtbase-devel layer-shell-qt-devel python3 git
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DREDUCE_WHITE_DEPLOY_RUNTIME=OFF
+      - name: Build and test
+        run: |
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure
+
+  linux-qt-parser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev python3
+      - name: Build parser fallback without layer-shell
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DREDUCE_WHITE_FORCE_QT_NUMBER_PARSER=ON -DCMAKE_DISABLE_FIND_PACKAGE_LayerShellQt=ON
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure

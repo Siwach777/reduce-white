@@ -10,11 +10,12 @@ public:
     void setOpacityLevel(double opacity);
 
 protected:
+    bool event(QEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
 
 private slots:
     void onGeometryChanged(const QRect &geo);
 
 private:
-    double m_opacityLevel;
+    int m_alpha;
 };

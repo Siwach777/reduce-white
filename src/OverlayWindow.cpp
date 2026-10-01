@@ -4,16 +4,20 @@
 #include <QScreen>
 #include <QGuiApplication>
 #include <QSurfaceFormat>
-#include <QRegion>
 #include <algorithm>
 #include <cmath>
+#ifdef __APPLE__
+#include "MacPlatform.h"
+#include <QPlatformSurfaceEvent>
+#endif
 
 #ifdef HAVE_LAYER_SHELL
 #include <LayerShellQt/Window>
 #endif
 
 OverlayWindow::OverlayWindow(QScreen *screen, double opacity, QWindow *parent)
-    : QRasterWindow(parent), m_opacityLevel(opacity) {
+    : QRasterWindow(parent), m_alpha(static_cast<int>(std::round(
+          (std::isfinite(opacity) ? std::clamp(opacity, 0.0, 1.0) : 0.0) * 255.0))) {
     
     Qt::WindowFlags winFlags = Qt::FramelessWindowHint | 
                                Qt::WindowTransparentForInput | 
@@ -24,12 +28,9 @@ OverlayWindow::OverlayWindow(QScreen *screen, double opacity, QWindow *parent)
     format.setAlphaBufferSize(8);
     setFormat(format);
     
-    // Set empty input mask to guarantee 100% click-through across all window managers
-    setMask(QRegion());
-    
     // Check if we are running under Wayland
     QString platform = QGuiApplication::platformName();
-    bool isWayland = platform.startsWith(QLatin1String("wayland"), Qt::CaseInsensitive);
+    [[maybe_unused]] bool isWayland = platform.startsWith(QLatin1String("wayland"), Qt::CaseInsensitive);
     
 #ifdef HAVE_LAYER_SHELL
     if (isWayland) {
@@ -71,22 +72,30 @@ OverlayWindow::OverlayWindow(QScreen *screen, double opacity, QWindow *parent)
 
 void OverlayWindow::onGeometryChanged(const QRect &geo) {
     setGeometry(geo);
-    setMask(QRegion());
+}
+
+bool OverlayWindow::event(QEvent *event) {
+    const bool handled = QRasterWindow::event(event);
+#ifdef __APPLE__
+    if (event->type() == QEvent::PlatformSurface &&
+        static_cast<QPlatformSurfaceEvent *>(event)->surfaceEventType() == QPlatformSurfaceEvent::SurfaceCreated) {
+        configureMacOverlay(this);
+    }
+#endif
+    return handled;
 }
 
 void OverlayWindow::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setCompositionMode(QPainter::CompositionMode_Source);
-    int alpha = static_cast<int>(std::round(std::clamp(m_opacityLevel, 0.0, 1.0) * 255.0));
-    painter.fillRect(QRect(0, 0, width(), height()), QColor(0, 0, 0, std::clamp(alpha, 0, 255)));
+    painter.fillRect(QRect(0, 0, width(), height()), QColor(0, 0, 0, m_alpha));
 }
 
 void OverlayWindow::setOpacityLevel(double opacity) {
-    double newOpacity = std::clamp(opacity, 0.0, 1.0);
-    // Fix: qFuzzyCompare fails at 0.0 due to relative epsilon; use absolute epsilon comparison
-    if (std::abs(m_opacityLevel - newOpacity) < 0.0001) return;
-    m_opacityLevel = newOpacity;
+    if (!std::isfinite(opacity)) return;
+    const int alpha = static_cast<int>(std::round(std::clamp(opacity, 0.0, 1.0) * 255.0));
+    if (m_alpha == alpha) return;
+    m_alpha = alpha;
     update();
 }
-

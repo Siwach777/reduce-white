@@ -1,0 +1,4 @@
+#!/bin/sh
+# Keep the command usable after moving the entire installation directory.
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$script_dir/@REDUCE_WHITE_BUNDLE_RELATIVE_DIR@/reduce-white.app/Contents/MacOS/reduce-white" "$@"

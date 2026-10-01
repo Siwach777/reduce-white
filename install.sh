@@ -1,26 +1,14 @@
 #!/bin/bash
-# Simple installation script for Linux variants
-
-set -e
-
-echo "Checking for CMake..."
-if ! command -v cmake &> /dev/null; then
-    echo "CMake could not be found. Please install CMake and try again."
+# Unix entry point for the shared installer; an optional positional prefix is supported.
+set -euo pipefail
+source_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Python 3 is required for this installer. See docs/installation.md for manual CMake commands." >&2
     exit 1
 fi
-
-echo "--- Configuring the project ---"
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-
-echo "--- Building the project ---"
-cmake --build build --config Release
-
-echo "--- Installing the project ---"
-echo "Root privileges might be required for installation..."
-if command -v sudo &> /dev/null; then
-    sudo cmake --install build
-else
-    cmake --install build
+if (( $# > 0 )) && [[ "$1" != -* ]]; then
+    prefix="$1"
+    shift
+    exec python3 "$source_dir/install.py" --prefix "$prefix" "$@"
 fi
-
-echo "Installation complete!"
+exec python3 "$source_dir/install.py" "$@"

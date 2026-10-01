@@ -1,66 +1,96 @@
 # Reduce White Point
 
-A highly optimized, cross-platform utility to reduce the perceived brightness of your screens via a software overlay. It mimics the "Reduce White Point" feature from mobile OSes by applying a click-through, hardware-accelerated dark overlay. 
+Reduce White Point dims every display with a translucent black overlay. Control it from a terminal or a desktop keyboard shortcut; a detached daemon starts automatically when needed. The overlay lets mouse input through and does not take keyboard focus.
 
-Built with extremely low resource consumption in mind, it operates silently in the background using minimal unshared memory and 0.0% idle CPU.
+The project uses C++17 and Qt 6 Core, Gui, and Network. It renders with `QRasterWindow`, without QtWidgets. Optional LayerShellQt integration handles compatible Wayland compositors, and optional Linux `ddcutil` integration controls hardware brightness.
 
-## Features
-- **Cross-Platform**: Works natively on Linux (Wayland & X11) and Windows.
-- **Wayland Native**: Uses `LayerShellQt` on Wayland (KDE Plasma, Sway, Hyprland, etc.) to guarantee the overlay correctly spans the screen and stays above all other windows.
-- **Ultra-Lightweight**: Entirely stripped of heavy UI frameworks (no `QtWidgets`). It renders using low-level, hardware-accelerated raster surfaces and communicates via zero-allocation POSIX sockets.
-- **Hardware Integration**: Can optionally interface with `ddcutil` on Linux to dim hardware brightness alongside the software overlay.
-- **Single Instance & Daemonless Design**: Just run `reduce-white --set 0.3` anywhere. It auto-starts in the background in less than a millisecond if it isn't already running.
+## Quick start
 
-## Installation
+Install the dependencies for your platform using the [installation guide](docs/installation.md), then run:
 
-We provide simple, one-click installation scripts. You will need CMake and Qt6 (`qt6-base` and `layer-shell-qt` on Linux) installed on your system.
-
-### Linux (Arch / Ubuntu / Fedora / etc.)
 ```bash
-# Make sure you have cmake and qt6 installed.
-# e.g., on Arch: sudo pacman -S base-devel cmake qt6-base layer-shell-qt
-
+# Linux or macOS: build, test, and install into a user-local directory
 ./install.sh
-```
-*Note: This will build the project in Release mode and automatically copy it to `/usr/local/bin`.*
 
-### Windows
-```powershell
-# Ensure CMake and Qt6 are installed (via vcpkg or Qt Maintenance Tool)
-.\install.bat
-```
-*Note: After installation on Windows, ensure the destination directory is in your system PATH.*
-
-### Universal / Python
-```bash
+# The same installer works on all supported platforms
 python3 install.py
 ```
 
-## Usage
+On Windows:
 
-**Important:** The command name is `reduce-white` (not `reduce-w`).
-
-Control the dimming by running the command in your terminal or assigning it to a global keyboard shortcut in your Desktop Environment:
-
-```bash
-# Set opacity to 30% (auto-starts the background daemon if not running)
-reduce-white --set 0.3
-
-# Toggle the effect on/off
-reduce-white --toggle
-
-# Incrementally increase or decrease darkness (great for hotkeys!)
-reduce-white --increase
-reduce-white --decrease
+```powershell
+.\install.bat --qt-prefix "C:\Qt\6.8.3\msvc2022_64"
 ```
 
-### Hardware Brightness (`ddcutil`)
-If you want the daemon to also lower hardware monitor brightness via your monitor's DDC/CI interface when you apply the filter:
-1. Kill the background process if it is running: `killall reduce-white`
-2. Start it manually once with the flag: `reduce-white --daemon --ddcutil &`
-3. Subsequent commands (`reduce-white --increase`, etc.) will now control both software and hardware brightness.
+The installer prints the `bin` directory to add to PATH. It runs regression checks before installation and does not request administrator privileges for the default installation.
 
-## Architecture & Optimizations
-- **Daemon Mode**: The primary process creates a `/tmp/reduce-white-ipc.sock` Unix Domain socket and sleeps. It uses 0% CPU unless a command is actively being received.
-- **Client Mode**: When you run `reduce-white --increase`, it entirely bypasses Qt initialization, sends a rapid ASCII string over the POSIX socket to the daemon, and exits in <1ms. 
-- **Memory Profiling**: While system monitors may report ~100MB RSS due to shared Qt Wayland libraries (which are likely already loaded into RAM by your desktop environment), the *Proportional Set Size* and unshared memory footprint is strictly constrained to a few megabytes. Memory allocations during IPC string parsing have been eliminated to prevent fragmentation over weeks of uptime.
+```bash
+reduce-white --set 0.3
+reduce-white --decrease 0.1
+reduce-white --toggle
+reduce-white --status
+reduce-white --quit
+```
+
+`--set 0.3` means 30% black overlay opacity. Increasing opacity makes the screen darker. Opacity 0 has no dimming effect; opacity 1 covers the screen with black.
+
+## Platform support
+
+| Platform | Implementation | Validation |
+| --- | --- | --- |
+| Linux X11 | Transparent, non-focusable, topmost Qt tool windows | Linux builds and isolated IPC tests verified locally; actual desktop behavior depends on the window manager. |
+| Linux Wayland | LayerShellQt 6 overlay surfaces when available | Builds verified with and without LayerShellQt; the compositor must support layer-shell. |
+| Windows | Qt named-pipe IPC, detached process startup, standard Qt overlay windows | Native smoke tests and runtime packaging are configured in CI; a Windows host is needed to execute them. |
+| macOS | Native executable discovery, Qt app bundle, AppKit click-through windows and Spaces behavior | Native build/test/packaging configured in CI; macOS desktop validation remains necessary. |
+
+Windows and macOS implementations are included, but their native CI jobs have not been executed in the Linux development session. Their support should be treated as experimental until those jobs and the desktop checklist pass. CI configuration alone is not a successful test result.
+
+Wayland compositors without layer-shell may reject fullscreen positioning or topmost stacking. macOS fullscreen Spaces, Windows exclusive fullscreen applications, secure desktops, and lock screens require separate visual checks. See [platform behavior](docs/usage.md#platform-behavior).
+
+## Installation choices
+
+| Choice | Command or setting | Result |
+| --- | --- | --- |
+| Default Linux installation | `./install.sh` | Installs into `~/.local`, using the system Qt runtime. |
+| Default macOS installation | `./install.sh` | Installs a deployed app bundle and CLI wrapper into `~/Applications/ReduceWhite`. |
+| Default Windows installation | `.\install.bat` | Installs the executable and Qt runtime into `%LOCALAPPDATA%\ReduceWhite`. |
+| Custom prefix | `python3 install.py --prefix /path/to/install` | Installs into a directory you choose. |
+| Portable runtime | `python3 install.py --portable --prefix ./dist` | Deploys Qt libraries/plugins alongside the application; requires Qt 6.5+. |
+| Existing Qt runtime | `python3 install.py --system-qt` | Disables runtime deployment. |
+| System-wide installation | `python3 install.py --system` | Installs into `/usr/local` on Unix or Program Files on Windows; privileges may be required. |
+
+A portable distribution can be moved as a complete directory on a compatible OS and CPU architecture. It does not turn one binary into an application for every operating system or guarantee compatibility with older Linux libc versions. Detailed packaging and relocation instructions are in [installation](docs/installation.md#portable-packages).
+
+## Features and behavior
+
+- One overlay per actual screen, including screen additions/removals and geometry changes.
+- Exact command validation and finite opacity/step values.
+- One daemon per user and optional named instance, protected by a lifetime lock.
+- Asynchronous IPC with bounded buffers, connection limits, and deadlines.
+- Native Unix client dispatch without constructing a Qt application.
+- Hidden overlays when dimming is off, and repaints only when the rendered alpha changes.
+- Debounced, serialized, timeout-limited Linux hardware brightness writes.
+- User-local installers, optional bundled runtime dependencies, and ZIP/TGZ packaging.
+
+## Documentation
+
+- [Installation and packaging](docs/installation.md): dependencies, platform setup, installers, relocation, upgrading, and removal.
+- [Usage and platform behavior](docs/usage.md): every CLI command, hardware brightness, instances, shortcuts, startup, and platform limitations.
+- [Architecture and development](docs/development.md): source layout, IPC protocol, resource management, build switches, CI, testing, and benchmarks.
+- [Troubleshooting](docs/troubleshooting.md): build, runtime, compositor, IPC, hardware, and packaging failures.
+- [Project review](docs/project_analysis_and_optimizations.md): verified bug fixes, performance changes, measurements, and outstanding validation.
+
+## Manual build
+
+Requirements: CMake 3.16+, a C++17 compiler, and Qt 6.2+ development packages. Runtime deployment requires Qt 6.5+. The numeric parser uses a Qt C-locale fallback on compilers without floating-point `from_chars`.
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+cmake --install build --config Release --prefix "$HOME/.local"
+```
+
+On macOS, the build output is `build/reduce-white.app/Contents/MacOS/reduce-white`. Installation also creates `bin/reduce-white`, a wrapper that locates the app relative to itself. On Windows, a multi-configuration build typically places the executable under `build/Release/`.
+
+Stop a running daemon with `reduce-white --quit` before upgrading. The installer builds and installs files; it does not start the desktop overlay or configure login startup automatically.
